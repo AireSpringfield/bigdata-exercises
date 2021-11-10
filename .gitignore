@@ -2,3 +2,4 @@
 .DS_Store
 /.env
 /exercise07/JavaMapReduce/mapreduce.zip
+/exercise07/JavaMapReduce/mapreduce/python/gutenberg_x0.1.txt
