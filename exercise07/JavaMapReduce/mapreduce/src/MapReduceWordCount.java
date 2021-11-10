@@ -20,7 +20,7 @@ public class MapReduceWordCount {
         private Text word = new Text();
 
         // Only one input for map in this example. value is the text. key? idk
-             throws IOException, InterruptedException {
+        public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
             StringTokenizer itr = new StringTokenizer(value.toString());
             while(itr.hasMoreTokens())
             {
