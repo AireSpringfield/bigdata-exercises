@@ -17,7 +17,7 @@ run(){
 }
 
 checkArgument(){
-    if [ -z "$1" ]; then
+    if [ -z "$1" ]; then 
         echo "No input file name"; exit
     fi
 }

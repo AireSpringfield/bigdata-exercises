@@ -2,6 +2,7 @@ import java.io.IOException;
 import java.util.StringTokenizer;
 import org.apache.hadoop.conf.Configuration;
 import org.apache.hadoop.fs.Path;
+import org.apache.hadoop.fs.FileSystem;
 import org.apache.hadoop.io.IntWritable;
 import org.apache.hadoop.io.Text;
 import org.apache.hadoop.mapreduce.Job;
@@ -10,6 +11,8 @@ import org.apache.hadoop.mapreduce.Reducer;
 
 import org.apache.hadoop.mapreduce.lib.input.FileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.FileOutputFormat;
+import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
+import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
 public class Exercise {
@@ -19,9 +22,11 @@ public class Exercise {
             StringTokenizer itr = new StringTokenizer(value.toString());
             while(itr.hasMoreTokens())
             {
-                bool bEmit = false;
+                boolean bEmit = false;
                 String wordStr = itr.nextToken();
-                if(wordStr.charAt(0) == 'H') // Question 1: number of distinct words begin with H
+                if(wordStr.charAt(0) == 'H')    // Question 1: number of distinct words begin with H
+                //if(wordStr.charAt(wordStr.length()-1)=='g')    // Question 2: number of words (not distinct) end with g
+                //if(wordStr.length()==12)    // Question 3: number of words (not distinct) of length 12
                 {
                     bEmit = true;
                 }
@@ -36,76 +41,44 @@ public class Exercise {
         private Text word = new Text();
     }
 
-    // Question 2: number of words (not distinct) end with g
-    private static class Mapper2 extends Mapper<Object, Text, Text, IntWritable>{
-
-        private final static IntWritable one = new IntWritable(1);
-        private Text word = new Text();
-
-        public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
-            StringTokenizer itr = new StringTokenizer(value.toString());
-            while(itr.hasMoreTokens())
-            {
-                word.set(itr.nextToken());
-                context.write(word, one);
-            }
-        }
-    }
-
-
-    // Question 3: number of words (not distinct) of length 12
-    private static class Mapper3 extends Mapper<Object, Text, Text, IntWritable>{
-
-        private final static IntWritable one = new IntWritable(1);
-        private Text word = new Text();
-
-        public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
-            StringTokenizer itr = new StringTokenizer(value.toString());
-            while(itr.hasMoreTokens())
-            {
-                word.set(itr.nextToken());
-                context.write(word, one);
-            }
-        }
-    }
 
     private static class WordGroupingReducer extends Reducer<Text,IntWritable,Text,IntWritable> {
-        public static bool bDistinct = false;
         public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
-            if(!bDistinct)
+            if(false) // Question 1: number of distinct words begin with H
+            //if(true)  // Question 2: number of words (not distinct) end with g
+            //if(true)  // Question 3: number of words (not distinct) of length 12
             {
+                int resultVal = 0;
                 for(IntWritable v : values)
                 {
                     resultVal += v.get(); 
                 }
-                result.set(resultVal);
                 context.write(key, new IntWritable(resultVal));
             }
             else
             {
                 context.write(key, new IntWritable(1));
             }
-
-
         }
     }
 
 
-    private static class CountMapper extends Mapper<Text, IntWritable, Text, IntWritable>{
+    private static class CountMapper extends Mapper<Text, IntWritable, IntWritable, IntWritable>{
+        private final static IntWritable commonKey = new IntWritable(1);
         public void map(Text key, IntWritable value, Context context) throws IOException, InterruptedException {
-            context.write(key, value); // Just an identity
+            context.write(commonKey, value); // Just want the word count, all keys should be same
         }
     }
-    private static class CountReducer extends Reducer<Text,IntWritable,Object,IntWritable> {
+    private static class CountReducer extends Reducer<IntWritable,IntWritable,IntWritable,IntWritable> {
         private IntWritable result = new IntWritable();
-        public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
+        public void reduce(IntWritable key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
             int resultVal = 0;
             for(IntWritable v : values)
             {
                 resultVal += v.get(); 
             }
             result.set(resultVal);
-            context.write(new Object(), result);
+            context.write(new IntWritable(1), result);  // The key is a dummy one
         }
     }
 
@@ -117,18 +90,23 @@ public class Exercise {
             System.exit(2);
         }
 
+        Path inputFilePath = new Path(otherArgs[0]);
+        Path outputIntermediatePath = new Path(otherArgs[1] + "/intermediate");
+        Path outputIntermediateFile0Path = new Path(otherArgs[1] + "/intermediate/part-r-00000");
+        Path outputResultPath = new Path(otherArgs[1] + "/result");
+
         // First, group words
-        bool bFirstJobSuccess = false;
+        boolean bFirstJobSuccess = false;
         {
             Job job = new Job(conf, "WordGrouping");
             job.setJarByClass(Exercise.class);
             job.setMapperClass(WordGroupingMapper.class);
-            WordGroupingReducer.bDistinct = true;
             job.setReducerClass(WordGroupingReducer.class);
             job.setOutputKeyClass(Text.class);
             job.setOutputValueClass(IntWritable.class);
-            FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
-            FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]) + "/intermediate");
+            FileInputFormat.addInputPath(job, inputFilePath);
+            SequenceFileOutputFormat.setOutputPath(job, outputIntermediatePath);
+            job.setOutputFormatClass(SequenceFileOutputFormat.class);
             
             bFirstJobSuccess = job.waitForCompletion(true);
         }
@@ -140,10 +118,11 @@ public class Exercise {
             job.setJarByClass(Exercise.class);
             job.setMapperClass(CountMapper.class);
             job.setReducerClass(CountReducer.class);
-            job.setOutputKeyClass(Object.class);
+            job.setOutputKeyClass(IntWritable.class);
             job.setOutputValueClass(IntWritable.class);
-            FileInputFormat.addInputPath(job, new Path(otherArgs[1]) + "/intermediate"));
-            FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]) + "/result");
+            SequenceFileInputFormat.addInputPath(job, outputIntermediateFile0Path);
+            job.setInputFormatClass(SequenceFileInputFormat.class);
+            FileOutputFormat.setOutputPath(job, outputResultPath);
 
             System.exit(job.waitForCompletion(true) ? 0 : 1);
         }
