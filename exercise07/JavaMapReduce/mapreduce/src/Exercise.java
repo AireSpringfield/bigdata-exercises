@@ -15,6 +15,11 @@ import org.apache.hadoop.mapreduce.lib.input.SequenceFileInputFormat;
 import org.apache.hadoop.mapreduce.lib.output.SequenceFileOutputFormat;
 import org.apache.hadoop.util.GenericOptionsParser;
 
+// Results on gutenberg.txt:
+// Q1   42590
+// Q2   5154566
+// Q3   1511710
+
 public class Exercise {
     
     private static class WordGroupingMapper extends Mapper<Object, Text, Text, IntWritable>{

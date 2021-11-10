@@ -12,8 +12,10 @@ build (){
 
 run(){
     checkArgument $1
-    hadoop fs -rm -r -f /tmp/gut01/
-    time yarn jar $1.jar $1 /gutenberg_x0.1.txt /tmp/gut01/
+    #hadoop fs -rm -r -f /tmp/gut01/
+    #time yarn jar $1.jar $1 /gutenberg_x0.1.txt /tmp/gut01/
+    hadoop fs -rm -r -f /tmp/gut/
+    time yarn jar $1.jar $1 /gutenberg.txt /tmp/gut/
 }
 
 checkArgument(){
