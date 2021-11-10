@@ -19,8 +19,14 @@ public class MapReduceWordCount {
         private final static IntWritable one = new IntWritable(1);
         private Text word = new Text();
 
-        public void map(Object key, Text value, Context context) throws IOException, InterruptedException {
-            ... // write your map function
+        // Only one input for map in this example. value is the text. key? idk
+             throws IOException, InterruptedException {
+            StringTokenizer itr = new StringTokenizer(value.toString());
+            while(itr.hasMoreTokens())
+            {
+                word.set(itr.nextToken());
+                context.write(word, one);
+            }
         }
     }
 
@@ -29,7 +35,13 @@ public class MapReduceWordCount {
         private IntWritable result = new IntWritable();
 
         public void reduce(Text key, Iterable<IntWritable> values, Context context) throws IOException, InterruptedException {
-            ... // write your reduce function
+            int resultVal = 0;
+            for(IntWritable v : values)
+            {
+                resultVal += v.get(); 
+            }
+            result.set(resultVal);
+            context.write(key, result);
         }
     }
 
@@ -56,6 +68,11 @@ public class MapReduceWordCount {
         FileInputFormat.addInputPath(job, new Path(otherArgs[0]));
         FileOutputFormat.setOutputPath(job, new Path(otherArgs[1]));
         System.exit(job.waitForCompletion(true) ? 0 : 1);
+    // Performance on 0.1x dataset:
+    // raw:                                 58s
+    // with combiner:                       44s
+    // with 8 reduce tasks:                 1m16s
+    // With combiner & 8 reduce tasks:      1m3s
     }
 
 }
